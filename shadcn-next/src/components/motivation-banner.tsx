@@ -45,7 +45,7 @@ export function MotivationBanner({
     <div
       ref={emblaRef}
       className={cn(
-        "relative h-6 w-full overflow-hidden rounded-md bg-primary/10 px-3 text-sm font-semibold text-primary sm:h-8 sm:w-72",
+        "relative h-6 w-full max-w-full overflow-hidden rounded-md bg-primary/10 px-3 text-sm font-semibold text-primary sm:h-8 sm:w-[36rem]",
         className
       )}
     >
@@ -53,9 +53,9 @@ export function MotivationBanner({
         {slides.map((message, index) => (
           <div
             key={`${message}-${index}`}
-            className="flex h-6 flex-[0_0_100%] items-center whitespace-nowrap sm:h-8"
+            className="flex h-6 flex-[0_0_100%] items-center sm:h-8"
           >
-            {message}
+            <span className="truncate">{message}</span>
           </div>
         ))}
       </div>
