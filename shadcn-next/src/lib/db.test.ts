@@ -126,6 +126,12 @@ describe("Store 쓰기", () => {
     expect(() => store.deleteBorrower("nope")).toThrowError(StoreError);
   });
 
+  it("금지어는 하트로 바꿔서 저장한다", () => {
+    const state = store.addBanner("담배 끊고 금연 성공");
+    expect(state.bannerMessages).toContain("❤️ 끊고 ❤️ 성공");
+    expect(state.bannerMessages.some((m) => /담배|금연/.test(m))).toBe(false);
+  });
+
   it("배너 추가는 중복을 무시하고 빈 값은 400", () => {
     const s1 = store.addBanner("새 문구");
     expect(s1.bannerMessages).toContain("새 문구");

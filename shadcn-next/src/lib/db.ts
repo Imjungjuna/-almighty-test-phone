@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { isPhoneId, type PhoneId } from "@/lib/phones";
+import { replaceBannedWords } from "@/lib/banned-words";
 import { createDefaultPhoneStates } from "@/lib/phone-state";
 import type { AppState, Borrower, PhoneState, PhoneStateMap } from "@/lib/types";
 
@@ -235,7 +236,7 @@ export class Store {
   }
 
   addBanner(messageRaw: string): AppState {
-    const message = messageRaw.trim();
+    const message = replaceBannedWords(messageRaw.trim());
     if (!message) throw new StoreError(400, "배너 문구를 입력해 주세요.");
     this.db
       .prepare("INSERT OR IGNORE INTO banner_messages (message, created_at) VALUES (?, ?)")
