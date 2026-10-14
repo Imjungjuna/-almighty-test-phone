@@ -24,11 +24,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PHONES, PHONE_BY_ID, type PhoneId, type Platform } from "@/lib/phones";
-import type { Borrower, PhoneState, PhoneStateMap } from "@/lib/types";
+import { api, ApiError, isOfflineError } from "@/lib/api";
+import type {
+  AppState,
+  Borrower,
+  PhoneStateMap,
+} from "@/lib/types";
 import {
   createDefaultPhoneStates,
   ensurePhoneState,
-  sanitizePhoneStates,
 } from "@/lib/phone-state";
 
 type GridItem = { type: "phone"; phoneId: PhoneId } | { type: "borrower-card" };
@@ -46,18 +50,11 @@ const GRID_LAYOUT: GridItem[] = [
 
 type BorrowerOrgOption = "프론트엔드팀" | "백엔드팀" | "QA" | "기타";
 
-const BORROWERS_STORAGE_KEY = "test-phone-borrowers";
-const PHONE_STORAGE_KEY = "test-phone-statuses";
-const BANNER_STORAGE_KEY = "test-phone-banner-messages";
 const BORROWER_ORG_OPTIONS: BorrowerOrgOption[] = [
   "프론트엔드팀",
   "백엔드팀",
   "QA",
   "기타",
-];
-const MOTIVATION_MESSAGES = [
-  "상태 초기화 버그 수정 완료",
-  "롤링 배너 구매 문의",
 ];
 
 const PLATFORM_LABELS: Record<Platform, string> = {
@@ -115,9 +112,74 @@ export default function Home() {
   const [returnConfirmPhoneId, setReturnConfirmPhoneId] =
     React.useState<PhoneId | null>(null);
   const [bannerMessages, setBannerMessages] =
-    React.useState<string[]>(MOTIVATION_MESSAGES);
+    React.useState<string[]>([]);
   const [bannerDialogOpen, setBannerDialogOpen] = React.useState(false);
   const [bannerInput, setBannerInput] = React.useState("");
+  const [offline, setOffline] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [toast, setToast] = React.useState<string | null>(null);
+  const toastTimer = React.useRef<number | null>(null);
+
+  const applyState = React.useCallback((state: AppState) => {
+    setBorrowers(state.borrowers);
+    setPhones(state.phones);
+    setBannerMessages(state.bannerMessages);
+    setOffline(false);
+  }, []);
+
+  const showToast = React.useCallback((message: string) => {
+    if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+    setToast(message);
+    toastTimer.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimer.current = null;
+    }, 3000);
+  }, []);
+
+  const refresh = React.useCallback(async () => {
+    try {
+      applyState(await api.getState());
+    } catch (error) {
+      if (isOfflineError(error)) setOffline(true);
+    }
+  }, [applyState]);
+
+  const runAction = React.useCallback(
+    async (
+      action: () => Promise<AppState>,
+      onClientError?: (message: string) => void
+    ) => {
+      setBusy(true);
+      try {
+        applyState(await action());
+        return true;
+      } catch (error) {
+        if (isOfflineError(error)) {
+          setOffline(true);
+          showToast("서버에 연결할 수 없습니다.");
+        } else if (error instanceof ApiError && error.status === 409) {
+          showToast("방금 다른 기기에서 처리됐습니다.");
+          await refresh();
+        } else if (error instanceof ApiError) {
+          (onClientError ?? showToast)(error.message);
+        } else {
+          showToast("알 수 없는 오류가 발생했습니다.");
+        }
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [applyState, refresh, showToast]
+  );
+
+  React.useEffect(
+    () => () => {
+      if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+    },
+    []
+  );
+
 
   const openPhoneDialog = React.useCallback(
     (phoneId: PhoneId, mode: "borrow" | "manage") => {
@@ -136,48 +198,33 @@ export default function Home() {
   }, []);
 
   React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const storedBorrowers = window.localStorage.getItem(
-        BORROWERS_STORAGE_KEY
-      );
-      if (storedBorrowers) {
-        const parsed = JSON.parse(storedBorrowers) as Borrower[];
-        if (Array.isArray(parsed)) {
-          setBorrowers(parsed);
+    let cancelled = false;
+    (async () => {
+      try {
+        const state = await api.getState();
+        if (!cancelled) applyState(state);
+      } catch (error) {
+        if (!cancelled && isOfflineError(error)) setOffline(true);
+      } finally {
+        if (!cancelled) {
+          setHydrated(true);
+          setCurrentTime(new Date());
         }
       }
-    } catch (error) {
-      console.error("Failed to load borrowers", error);
-    }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [applyState]);
 
-    try {
-      const storedPhones = window.localStorage.getItem(PHONE_STORAGE_KEY);
-      if (storedPhones) {
-        const parsed = JSON.parse(storedPhones);
-        setPhones(sanitizePhoneStates(parsed));
-      }
-    } catch (error) {
-      console.error("Failed to load phone statuses", error);
-    }
-
-    try {
-      const storedBanner = window.localStorage.getItem(BANNER_STORAGE_KEY);
-      if (storedBanner) {
-        const parsed = JSON.parse(storedBanner);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setBannerMessages(
-            parsed.filter((msg): msg is string => typeof msg === "string")
-          );
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load banner messages", error);
-    }
-
-    setHydrated(true);
-    setCurrentTime(new Date());
-  }, []);
+  React.useEffect(() => {
+    if (!hydrated) return;
+    const id = window.setInterval(() => {
+      if (document.hidden) return;
+      void refresh();
+    }, 5_000);
+    return () => window.clearInterval(id);
+  }, [hydrated, refresh]);
 
   React.useEffect(() => {
     if (!hydrated) return;
@@ -186,27 +233,6 @@ export default function Home() {
     }, 60_000);
     return () => window.clearInterval(id);
   }, [hydrated]);
-
-  React.useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem(
-      BORROWERS_STORAGE_KEY,
-      JSON.stringify(borrowers)
-    );
-  }, [borrowers, hydrated]);
-
-  React.useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem(PHONE_STORAGE_KEY, JSON.stringify(phones));
-  }, [phones, hydrated]);
-
-  React.useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem(
-      BANNER_STORAGE_KEY,
-      JSON.stringify(bannerMessages)
-    );
-  }, [bannerMessages, hydrated]);
 
   React.useEffect(() => {
     if (!phoneDialogOpen || !selectedPhoneId) {
@@ -225,65 +251,20 @@ export default function Home() {
     setSelectedBorrowerId(null);
   }, [borrowers, phoneDialogMode, phoneDialogOpen, phones, selectedPhoneId]);
 
-  const handleStartLoan = () => {
+  const handleStartLoan = async () => {
     if (!selectedPhoneId || !selectedBorrowerId) return;
-    setPhones((prev) => {
-      const next = { ...prev };
-      const current = ensurePhoneState(prev, selectedPhoneId);
-      next[selectedPhoneId] = {
-        id: selectedPhoneId,
-        status: "borrowed",
-        currentLoan: {
-          borrowerId: selectedBorrowerId,
-          borrowedAt: new Date().toISOString(),
-        },
-        lastReturn: current.lastReturn,
-      };
-      return next;
-    });
+    const phoneId = selectedPhoneId;
+    const borrowerId = selectedBorrowerId;
     closePhoneDialog();
+    await runAction(() => api.borrow(phoneId, borrowerId));
   };
 
-  const handleTransferLoan = () => {
+  const handleTransferLoan = async () => {
     if (!selectedPhoneId || !selectedBorrowerId) return;
-    setPhones((prev) => {
-      const current = ensurePhoneState(prev, selectedPhoneId);
-      if (current.status !== "borrowed" || !current.currentLoan) return prev;
-      if (current.currentLoan.borrowerId === selectedBorrowerId) return prev;
-      return {
-        ...prev,
-        [selectedPhoneId]: {
-          ...current,
-          status: "borrowed",
-          currentLoan: {
-            borrowerId: selectedBorrowerId,
-            borrowedAt: new Date().toISOString(),
-          },
-        },
-      };
-    });
+    const phoneId = selectedPhoneId;
+    const borrowerId = selectedBorrowerId;
     closePhoneDialog();
-  };
-
-  const handleReturnLoan = (phoneId: PhoneId, returnedAt?: string) => {
-    setPhones((prev) => {
-      const current = ensurePhoneState(prev, phoneId);
-      const borrowerId = current.currentLoan?.borrowerId;
-      const next: PhoneState = {
-        id: phoneId,
-        status: "available",
-        lastReturn: borrowerId
-          ? {
-              borrowerId,
-              returnedAt: returnedAt ?? new Date().toISOString(),
-            }
-          : current.lastReturn,
-      };
-      return {
-        ...prev,
-        [phoneId]: next,
-      };
-    });
+    await runAction(() => api.transfer(phoneId, borrowerId));
   };
 
   const handleManualReturn = () => {
@@ -293,24 +274,24 @@ export default function Home() {
     setReturnConfirmPhoneId(targetPhoneId);
   };
 
-  const finalizeReturn = () => {
+  const finalizeReturn = async () => {
     if (!returnConfirmPhoneId) return;
-    handleReturnLoan(returnConfirmPhoneId);
+    const phoneId = returnConfirmPhoneId;
     setReturnConfirmPhoneId(null);
+    await runAction(() => api.returnPhone(phoneId));
   };
 
-  const handleAddBannerMessage = () => {
+  const handleAddBannerMessage = async () => {
     const message = bannerInput.trim();
     if (!message) return;
-    setBannerMessages((prev) => {
-      if (prev.includes(message)) return prev;
-      return [...prev, message];
-    });
-    setBannerInput("");
-    setBannerDialogOpen(false);
+    const ok = await runAction(() => api.addBanner(message));
+    if (ok) {
+      setBannerInput("");
+      setBannerDialogOpen(false);
+    }
   };
 
-  const handleAddBorrower = () => {
+  const handleAddBorrower = async () => {
     const name = borrowerName.trim();
     const organization =
       borrowerOrgOption === "기타"
@@ -320,17 +301,16 @@ export default function Home() {
       setBorrowerError("이름과 소속을 모두 입력해 주세요.");
       return;
     }
-    const newBorrower: Borrower = {
-      id: crypto.randomUUID(),
-      name,
-      organization,
-      createdAt: new Date().toISOString(),
-    };
-    setBorrowers((prev) => [...prev, newBorrower]);
-    setBorrowerName("");
-    setBorrowerOrgOption("프론트엔드팀");
-    setBorrowerOrgCustom("");
-    setBorrowerError(null);
+    const ok = await runAction(
+      () => api.addBorrower(name, organization),
+      setBorrowerError
+    );
+    if (ok) {
+      setBorrowerName("");
+      setBorrowerOrgOption("프론트엔드팀");
+      setBorrowerOrgCustom("");
+      setBorrowerError(null);
+    }
   };
 
   const isBorrowerInUse = React.useCallback(
@@ -346,15 +326,16 @@ export default function Home() {
     [phones]
   );
 
-  const handleDeleteBorrower = (borrowerId: string) => {
+  const handleDeleteBorrower = async (borrowerId: string) => {
     if (isBorrowerInUse(borrowerId)) {
       setBorrowerError("대여 중인 대여자는 삭제할 수 없습니다.");
       return;
     }
-    setBorrowers((prev) =>
-      prev.filter((borrower) => borrower.id !== borrowerId)
+    const ok = await runAction(
+      () => api.deleteBorrower(borrowerId),
+      setBorrowerError
     );
-    setBorrowerError(null);
+    if (ok) setBorrowerError(null);
   };
 
   const getBorrower = React.useCallback(
@@ -390,13 +371,21 @@ export default function Home() {
             size="sm"
             className="justify-start px-0 text-xs text-muted-foreground underline-offset-4 hover:text-primary"
             onClick={() => setBannerDialogOpen(true)}
+            disabled={offline}
           >
             롤링 배너 추가하기
           </Button>
         </div>
-        <span className="text-sm text-muted-foreground">
-          현재 시각 {formatClock(currentTime)}
-        </span>
+        <div className="flex items-center gap-3">
+          {offline && (
+            <span className="rounded-full bg-destructive px-3 py-1 text-xs font-semibold text-destructive-foreground">
+              서버 연결 끊김
+            </span>
+          )}
+          <span className="text-sm text-muted-foreground">
+            현재 시각 {formatClock(currentTime)}
+          </span>
+        </div>
       </header>
 
       <section className="grid grid-cols-2 grid-rows-4 gap-6">
@@ -424,6 +413,7 @@ export default function Home() {
               <button
                 key={phone.id}
                 type="button"
+                disabled={offline}
                 onClick={() =>
                   openPhoneDialog(phone.id, isBorrowed ? "manage" : "borrow")
                 }
@@ -541,6 +531,7 @@ export default function Home() {
                   className="w-full"
                   size="sm"
                   onClick={() => setBorrowerDialogOpen(true)}
+                  disabled={offline}
                 >
                   대여자 등록하기
                 </Button>
@@ -649,6 +640,8 @@ export default function Home() {
                   variant="secondary"
                   onClick={handleTransferLoan}
                   disabled={
+                    offline ||
+                    busy ||
                     !selectedBorrowerId ||
                     selectedBorrowerId ===
                       currentDialogPhone?.currentLoan?.borrowerId
@@ -656,14 +649,23 @@ export default function Home() {
                 >
                   대여자 변경
                 </Button>
-                <Button variant="destructive" onClick={handleManualReturn}>
+                <Button
+                  variant="destructive"
+                  onClick={handleManualReturn}
+                  disabled={offline || busy}
+                >
                   반납하기
                 </Button>
               </>
             ) : (
               <Button
                 onClick={handleStartLoan}
-                disabled={!selectedBorrowerId || borrowers.length === 0}
+                disabled={
+                  offline ||
+                  busy ||
+                  !selectedBorrowerId ||
+                  borrowers.length === 0
+                }
               >
                 대여 시작
               </Button>
@@ -738,7 +740,11 @@ export default function Home() {
               {borrowerError && (
                 <p className="text-xs text-destructive">{borrowerError}</p>
               )}
-              <Button type="button" onClick={handleAddBorrower}>
+              <Button
+                type="button"
+                onClick={handleAddBorrower}
+                disabled={offline || busy}
+              >
                 대여자 추가
               </Button>
             </div>
@@ -769,7 +775,7 @@ export default function Home() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeleteBorrower(borrower.id)}
-                          disabled={inUse}
+                          disabled={inUse || offline || busy}
                         >
                           {inUse ? "대여 중" : "삭제"}
                         </Button>
@@ -834,7 +840,7 @@ export default function Home() {
             </Button>
             <Button
               onClick={handleAddBannerMessage}
-              disabled={!bannerInput.trim()}
+              disabled={!bannerInput.trim() || offline || busy}
             >
               추가하기
             </Button>
@@ -869,10 +875,21 @@ export default function Home() {
             >
               아직이에요
             </Button>
-            <Button onClick={finalizeReturn}>충전 완료</Button>
+            <Button onClick={finalizeReturn} disabled={offline || busy}>
+              충전 완료
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {toast && (
+        <div
+          role="status"
+          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-md bg-foreground px-4 py-2 text-sm text-background shadow-lg"
+        >
+          {toast}
+        </div>
+      )}
     </main>
   );
 }
