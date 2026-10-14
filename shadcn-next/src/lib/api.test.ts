@@ -36,4 +36,26 @@ describe("api client", () => {
     expect(calls[0][1].method).toBe("DELETE");
     expect(calls[1][0]).toBe("/api/phones/i02/return");
   });
+
+  it("2xx인데 본문이 JSON이 아니면 ApiError로 거절한다", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("<html>", { status: 200 })));
+    const err = await api.getState().catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.status).toBe(200);
+  });
+
+  it("502 HTML 응답은 status 502이고 offline으로 판정", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("<html>Bad Gateway</html>", { status: 502 })));
+    const err = await api.getState().catch((e) => e);
+    expect(err.status).toBe(502);
+    expect(isOfflineError(err)).toBe(true);
+  });
+
+  it("경로 id는 URL 인코딩된다", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(okState), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await api.deleteBorrower("a/b");
+    const calls = fetchMock.mock.calls as unknown as [string, RequestInit][];
+    expect(calls[0][0]).toBe("/api/borrowers/a%2Fb");
+  });
 });

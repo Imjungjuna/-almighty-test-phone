@@ -23,11 +23,18 @@ async function request(path: string, init?: RequestInit): Promise<AppState> {
   } catch {
     throw new ApiError(0, "서버에 연결할 수 없습니다.");
   }
-  const body = (await res.json().catch(() => ({}))) as { error?: string };
+  const parsed = await res
+    .json()
+    .then((value) => ({ ok: true as const, value }))
+    .catch(() => ({ ok: false as const }));
   if (!res.ok) {
-    throw new ApiError(res.status, body.error ?? "요청에 실패했습니다.");
+    const message = parsed.ok ? (parsed.value as { error?: string }).error : undefined;
+    throw new ApiError(res.status, message ?? "요청에 실패했습니다.");
   }
-  return body as AppState;
+  if (!parsed.ok) {
+    throw new ApiError(res.status, "서버 응답을 해석할 수 없습니다.");
+  }
+  return parsed.value as AppState;
 }
 
 const post = (path: string, body: unknown) =>
@@ -36,12 +43,14 @@ const post = (path: string, body: unknown) =>
 export const api = {
   getState: () => request("/api/state"),
   borrow: (phoneId: string, borrowerId: string) =>
-    post(`/api/phones/${phoneId}/borrow`, { borrowerId }),
+    post(`/api/phones/${encodeURIComponent(phoneId)}/borrow`, { borrowerId }),
   transfer: (phoneId: string, borrowerId: string) =>
-    post(`/api/phones/${phoneId}/transfer`, { borrowerId }),
-  returnPhone: (phoneId: string) => post(`/api/phones/${phoneId}/return`, {}),
+    post(`/api/phones/${encodeURIComponent(phoneId)}/transfer`, { borrowerId }),
+  returnPhone: (phoneId: string) =>
+    post(`/api/phones/${encodeURIComponent(phoneId)}/return`, {}),
   addBorrower: (name: string, organization: string) =>
     post("/api/borrowers", { name, organization }),
-  deleteBorrower: (id: string) => request(`/api/borrowers/${id}`, { method: "DELETE" }),
+  deleteBorrower: (id: string) =>
+    request(`/api/borrowers/${encodeURIComponent(id)}`, { method: "DELETE" }),
   addBanner: (message: string) => post("/api/banner", { message }),
 };
