@@ -120,6 +120,9 @@ export default function Home() {
   const [toast, setToast] = React.useState<string | null>(null);
   const toastTimer = React.useRef<number | null>(null);
 
+  const seqRef = React.useRef(0);
+  const latestAppliedSeqRef = React.useRef(0);
+
   const applyState = React.useCallback((state: AppState) => {
     setBorrowers(state.borrowers);
     setPhones(state.phones);
@@ -136,13 +139,25 @@ export default function Home() {
     }, 3000);
   }, []);
 
+  // Apply a response only if it is newer than the last applied one, so a GET
+  // that started before a write cannot overwrite the write's result.
+  const applyIfNewer = React.useCallback(
+    (seq: number, state: AppState) => {
+      if (seq <= latestAppliedSeqRef.current) return;
+      latestAppliedSeqRef.current = seq;
+      applyState(state);
+    },
+    [applyState]
+  );
+
   const refresh = React.useCallback(async () => {
+    const seq = ++seqRef.current;
     try {
-      applyState(await api.getState());
+      applyIfNewer(seq, await api.getState());
     } catch (error) {
       if (isOfflineError(error)) setOffline(true);
     }
-  }, [applyState]);
+  }, [applyIfNewer]);
 
   const runAction = React.useCallback(
     async (
@@ -150,15 +165,17 @@ export default function Home() {
       onClientError?: (message: string) => void
     ) => {
       setBusy(true);
+      const seq = ++seqRef.current;
       try {
-        applyState(await action());
+        applyIfNewer(seq, await action());
         return true;
       } catch (error) {
         if (isOfflineError(error)) {
           setOffline(true);
           showToast("서버에 연결할 수 없습니다.");
         } else if (error instanceof ApiError && error.status === 409) {
-          showToast("방금 다른 기기에서 처리됐습니다.");
+          if (onClientError) onClientError(error.message);
+          else showToast("방금 다른 기기에서 처리됐습니다.");
           await refresh();
         } else if (error instanceof ApiError) {
           (onClientError ?? showToast)(error.message);
@@ -170,7 +187,7 @@ export default function Home() {
         setBusy(false);
       }
     },
-    [applyState, refresh, showToast]
+    [applyIfNewer, refresh, showToast]
   );
 
   React.useEffect(
@@ -200,9 +217,10 @@ export default function Home() {
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
+      const seq = ++seqRef.current;
       try {
         const state = await api.getState();
-        if (!cancelled) applyState(state);
+        if (!cancelled) applyIfNewer(seq, state);
       } catch (error) {
         if (!cancelled && isOfflineError(error)) setOffline(true);
       } finally {
@@ -215,7 +233,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [applyState]);
+  }, [applyIfNewer]);
 
   React.useEffect(() => {
     if (!hydrated) return;
