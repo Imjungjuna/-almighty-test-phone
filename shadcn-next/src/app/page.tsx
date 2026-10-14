@@ -34,6 +34,10 @@ import {
   createDefaultPhoneStates,
   ensurePhoneState,
 } from "@/lib/phone-state";
+import {
+  defaultBorrowerId,
+  resolveSelectedBorrowerId,
+} from "@/lib/dialog-selection";
 
 type GridItem = { type: "phone"; phoneId: PhoneId } | { type: "borrower-card" };
 
@@ -202,9 +206,13 @@ export default function Home() {
     (phoneId: PhoneId, mode: "borrow" | "manage") => {
       setSelectedPhoneId(phoneId);
       setPhoneDialogMode(mode);
+      // Default selection is computed once on open; polling must not reset it.
+      setSelectedBorrowerId(
+        defaultBorrowerId(mode, ensurePhoneState(phones, phoneId), borrowers)
+      );
       setPhoneDialogOpen(true);
     },
-    []
+    [borrowers, phones]
   );
 
   const closePhoneDialog = React.useCallback(() => {
@@ -246,41 +254,46 @@ export default function Home() {
 
   React.useEffect(() => {
     if (!hydrated) return;
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [hydrated, refresh]);
+
+  React.useEffect(() => {
+    if (!hydrated) return;
     const id = window.setInterval(() => {
       setCurrentTime(new Date());
     }, 60_000);
     return () => window.clearInterval(id);
   }, [hydrated]);
 
-  React.useEffect(() => {
-    if (!phoneDialogOpen || !selectedPhoneId) {
-      setSelectedBorrowerId(null);
-      return;
-    }
-    const phoneState = ensurePhoneState(phones, selectedPhoneId);
-    if (phoneDialogMode === "manage" && phoneState.currentLoan) {
-      setSelectedBorrowerId(phoneState.currentLoan.borrowerId);
-      return;
-    }
-    if (phoneDialogMode === "borrow" && borrowers.length > 0) {
-      setSelectedBorrowerId(borrowers[0].id);
-      return;
-    }
-    setSelectedBorrowerId(null);
-  }, [borrowers, phoneDialogMode, phoneDialogOpen, phones, selectedPhoneId]);
+  // Derived during render so a poll never overrides the user's choice; only
+  // falls back to the default when the chosen borrower has been deleted.
+  const effectiveSelectedBorrowerId =
+    phoneDialogOpen && selectedPhoneId
+      ? resolveSelectedBorrowerId(
+          selectedBorrowerId,
+          phoneDialogMode,
+          ensurePhoneState(phones, selectedPhoneId),
+          borrowers
+        )
+      : null;
 
   const handleStartLoan = async () => {
-    if (!selectedPhoneId || !selectedBorrowerId) return;
+    if (!selectedPhoneId || !effectiveSelectedBorrowerId) return;
     const phoneId = selectedPhoneId;
-    const borrowerId = selectedBorrowerId;
+    const borrowerId = effectiveSelectedBorrowerId;
     closePhoneDialog();
     await runAction(() => api.borrow(phoneId, borrowerId));
   };
 
   const handleTransferLoan = async () => {
-    if (!selectedPhoneId || !selectedBorrowerId) return;
+    if (!selectedPhoneId || !effectiveSelectedBorrowerId) return;
     const phoneId = selectedPhoneId;
-    const borrowerId = selectedBorrowerId;
+    const borrowerId = effectiveSelectedBorrowerId;
     closePhoneDialog();
     await runAction(() => api.transfer(phoneId, borrowerId));
   };
@@ -623,7 +636,7 @@ export default function Home() {
                       onClick={() => setSelectedBorrowerId(borrower.id)}
                       className={cn(
                         "flex h-full flex-col justify-between rounded-lg border p-3 text-left shadow-sm transition",
-                        selectedBorrowerId === borrower.id
+                        effectiveSelectedBorrowerId === borrower.id
                           ? "border-primary bg-primary/5 text-primary"
                           : "hover:border-primary/60"
                       )}
@@ -636,7 +649,7 @@ export default function Home() {
                           {borrower.name}
                         </p>
                       </div>
-                      {selectedBorrowerId === borrower.id && (
+                      {effectiveSelectedBorrowerId === borrower.id && (
                         <span className="mt-2 text-[10px] font-semibold uppercase text-primary">
                           선택됨
                         </span>
@@ -660,8 +673,8 @@ export default function Home() {
                   disabled={
                     offline ||
                     busy ||
-                    !selectedBorrowerId ||
-                    selectedBorrowerId ===
+                    !effectiveSelectedBorrowerId ||
+                    effectiveSelectedBorrowerId ===
                       currentDialogPhone?.currentLoan?.borrowerId
                   }
                 >
@@ -681,7 +694,7 @@ export default function Home() {
                 disabled={
                   offline ||
                   busy ||
-                  !selectedBorrowerId ||
+                  !effectiveSelectedBorrowerId ||
                   borrowers.length === 0
                 }
               >
