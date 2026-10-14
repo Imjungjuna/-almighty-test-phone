@@ -23,76 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const PHONES = [
-  {
-    id: "a01",
-    label: "A01",
-    platform: "android",
-    model: "갤럭시 S8",
-    color: "미드나이트 블랙",
-    image: "/devices/a01-s8.avif",
-    imageSize: { width: 360, height: 360, displayHeight: 176 },
-  },
-  {
-    id: "a02",
-    label: "A02",
-    platform: "android",
-    model: "갤럭시 S9",
-    color: "선라이즈 골드",
-    image: "/devices/a02-s9.jpg",
-    imageSize: { width: 849, height: 560, displayHeight: 150 },
-  },
-  {
-    id: "a03",
-    label: "A03",
-    platform: "android",
-    model: "갤럭시 S10 5G",
-    color: "크라운 골드",
-    image: "/devices/a3-s10.jpeg",
-    imageSize: { width: 275, height: 183, displayHeight: 140 },
-  },
-  {
-    id: "a04",
-    label: "A04",
-    platform: "android",
-    model: "LG V50 ThinQ",
-    color: "아스트로 블랙",
-    image: "/devices/a04-v50.webp",
-    imageSize: { width: 593, height: 589, displayHeight: 176 },
-  },
-  {
-    id: "i01",
-    label: "I01",
-    platform: "ios",
-    model: "아이폰 SE",
-    color: "PRODUCT(RED)",
-    image: "/devices/i01_se1.jpeg",
-    imageSize: { width: 400, height: 400, displayHeight: 176 },
-  },
-  {
-    id: "i02",
-    label: "I02",
-    platform: "ios",
-    model: "아이폰 X",
-    color: "스페이스 그레이",
-    image: "/devices/i02-X.webp",
-    imageSize: { width: 360, height: 360, displayHeight: 176 },
-  },
-  {
-    id: "i03",
-    label: "I03",
-    platform: "ios",
-    model: "아이폰 12 mini",
-    color: "블랙",
-    image: "/devices/i03-12mini.avif",
-    imageSize: { width: 600, height: 600, displayHeight: 176 },
-  },
-] as const;
-
-type PhoneDefinition = (typeof PHONES)[number];
-type PhoneId = PhoneDefinition["id"];
-type Platform = PhoneDefinition["platform"];
+import { PHONES, PHONE_BY_ID, type PhoneId, type Platform } from "@/lib/phones";
+import type { Borrower, PhoneState, PhoneStateMap } from "@/lib/types";
+import {
+  createDefaultPhoneStates,
+  ensurePhoneState,
+  sanitizePhoneStates,
+} from "@/lib/phone-state";
 
 type GridItem = { type: "phone"; phoneId: PhoneId } | { type: "borrower-card" };
 
@@ -106,40 +43,6 @@ const GRID_LAYOUT: GridItem[] = [
   { type: "phone", phoneId: "a04" },
   { type: "borrower-card" },
 ];
-
-const PHONE_BY_ID: Record<PhoneId, PhoneDefinition> = PHONES.reduce(
-  (acc, phone) => {
-    acc[phone.id] = phone;
-    return acc;
-  },
-  {} as Record<PhoneId, PhoneDefinition>
-);
-
-type Borrower = {
-  id: string;
-  name: string;
-  organization: string;
-  createdAt: string;
-};
-
-type LoanInfo = {
-  borrowerId: string;
-  borrowedAt: string;
-};
-
-type ReturnInfo = {
-  borrowerId: string;
-  returnedAt: string;
-};
-
-type PhoneState = {
-  id: PhoneId;
-  status: "available" | "borrowed";
-  currentLoan?: LoanInfo;
-  lastReturn?: ReturnInfo;
-};
-
-type PhoneStateMap = Record<PhoneId, PhoneState>;
 
 type BorrowerOrgOption = "프론트엔드팀" | "백엔드팀" | "QA" | "기타";
 
@@ -160,44 +63,6 @@ const MOTIVATION_MESSAGES = [
 const PLATFORM_LABELS: Record<Platform, string> = {
   android: "안드로이드",
   ios: "아이폰",
-};
-
-const createDefaultPhoneStates = (): PhoneStateMap => {
-  const map = {} as PhoneStateMap;
-  for (const phone of PHONES) {
-    map[phone.id] = { id: phone.id, status: "available" };
-  }
-  return map;
-};
-
-const sanitizePhoneStates = (raw: unknown): PhoneStateMap => {
-  const defaults = createDefaultPhoneStates();
-  if (!raw || typeof raw !== "object") return defaults;
-  const parsed = raw as Record<string, Partial<PhoneState>>;
-  for (const phone of PHONES) {
-    const value = parsed[phone.id];
-    if (value) {
-      defaults[phone.id] = {
-        id: phone.id,
-        status: value.status === "borrowed" ? "borrowed" : "available",
-        currentLoan: value.currentLoan?.borrowerId
-          ? {
-              borrowerId: value.currentLoan.borrowerId,
-              borrowedAt:
-                value.currentLoan.borrowedAt ?? new Date().toISOString(),
-            }
-          : undefined,
-        lastReturn: value.lastReturn?.borrowerId
-          ? {
-              borrowerId: value.lastReturn.borrowerId,
-              returnedAt:
-                value.lastReturn.returnedAt ?? new Date().toISOString(),
-            }
-          : undefined,
-      };
-    }
-  }
-  return defaults;
 };
 
 const formatDateTime = (value?: string) => {
@@ -221,9 +86,6 @@ const formatClock = (date: Date) =>
     hour: "numeric",
     minute: "2-digit",
   });
-
-const ensurePhoneState = (map: PhoneStateMap, phoneId: PhoneId) =>
-  map[phoneId] ?? { id: phoneId, status: "available" };
 
 export default function Home() {
   const [borrowers, setBorrowers] = React.useState<Borrower[]>([]);
