@@ -419,7 +419,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="grid grid-cols-2 grid-rows-4 gap-6">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:grid-rows-4 sm:gap-6">
         {GRID_LAYOUT.map((item) => {
           if (item.type === "phone") {
             const phone = PHONE_BY_ID[item.phoneId];
@@ -449,7 +449,7 @@ export default function Home() {
                   openPhoneDialog(phone.id, isBorrowed ? "manage" : "borrow")
                 }
                 className={cn(
-                  "group flex h-full flex-col rounded-xl border-2 p-5 text-left shadow-sm transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "group flex h-full flex-col rounded-xl border-2 p-4 text-left sm:p-5 shadow-sm transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   isBorrowed
                     ? "border-red-300 bg-red-50 hover:border-red-400"
                     : "border-emerald-300 bg-emerald-50 hover:border-emerald-400"
@@ -522,8 +522,12 @@ export default function Home() {
                       alt={`${phone.model} ${phone.color}`}
                       width={imageSize.width}
                       height={imageSize.height}
-                      className="w-auto object-contain drop-shadow-"
-                      style={{ height: displayHeight }}
+                      className="h-[calc(var(--phone-img-h)*0.7)] w-auto max-w-[40vw] object-contain sm:h-[var(--phone-img-h)] sm:max-w-none"
+                      style={
+                        {
+                          "--phone-img-h": `${displayHeight}px`,
+                        } as React.CSSProperties
+                      }
                     />
                   </div>
                 </div>
@@ -627,20 +631,20 @@ export default function Home() {
 
           <div className="space-y-3">
             <Label>대여자 선택</Label>
-            <div className="max-h-[480px] overflow-y-auto rounded-xl border p-4">
+            <div className="max-h-[50dvh] overflow-y-auto rounded-xl border p-2 sm:max-h-[480px] sm:p-4">
               {borrowers.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   먼저 대여자를 등록해야 대여를 진행할 수 있습니다.
                 </p>
               ) : (
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
                   {borrowers.map((borrower) => (
                     <button
                       key={borrower.id}
                       type="button"
                       onClick={() => setSelectedBorrowerId(borrower.id)}
                       className={cn(
-                        "flex h-full flex-col justify-between rounded-lg border p-3 text-left shadow-sm transition",
+                        "flex h-full flex-col justify-between rounded-lg border p-2.5 text-left shadow-sm transition sm:p-3",
                         effectiveSelectedBorrowerId === borrower.id
                           ? "border-primary bg-primary/5 text-primary"
                           : "hover:border-primary/60"
