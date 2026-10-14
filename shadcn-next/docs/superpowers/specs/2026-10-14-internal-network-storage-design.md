@@ -34,7 +34,7 @@
 ## 3-1. 운영 환경
 
 - 서버: 사용자 본인 MacBook Pro(Mac16,8), Node 24. 전원 어댑터 연결 시 잠자기 안 함 설정은 이미 켜져 있음. 덮개 닫힘·전원 분리·재부팅 후 로그인 전에는 서비스가 멈추며, 이는 허용된 제약이다.
-- 접속 주소: `http://ljhs-MacBook-Pro.local:3000`. Bonjour가 막힌 Wi-Fi이면 고정 IP(DHCP 예약)로 대체한다.
+- 접속 주소: `http://ljhs-MacBook-Pro.local:3100`. Bonjour가 막힌 Wi-Fi이면 고정 IP(DHCP 예약)로 대체한다.
 - 데이터 경로: `~/test-phone-data/test-phone.db`. 프로젝트 디렉터리 밖에 두어 `git pull`·재빌드와 분리한다. 경로는 환경변수 `TEST_PHONE_DB_PATH`로 바꿀 수 있고, 미설정 시 위 기본값을 쓴다.
 - 프로세스: `pm2`로 `next start` 실행, `pm2 startup` + `pm2 save`로 로그인 시 자동 시작. 비정상 종료 시 pm2가 재시작한다.
 - 백업: launchd 작업이 매일 04:00에 DB 파일을 `~/test-phone-data/backup/test-phone-YYYYMMDD.db`로 복사하고 7일보다 오래된 파일을 지운다.

@@ -1,7 +1,7 @@
 #!/bin/zsh
 set -euo pipefail
 DATA_DIR="${TEST_PHONE_DATA_DIR:-$HOME/test-phone-data}"
-DB="$DATA_DIR/test-phone.db"
+DB="${TEST_PHONE_DB_PATH:-$DATA_DIR/test-phone.db}"
 BACKUP_DIR="$DATA_DIR/backup"
 mkdir -p "$BACKUP_DIR"
 [ -f "$DB" ] || exit 0

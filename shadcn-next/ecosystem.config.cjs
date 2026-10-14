@@ -1,3 +1,6 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- pm2 loads this file as CommonJS
+const path = require("node:path");
+
 module.exports = {
   apps: [
     {
@@ -8,8 +11,8 @@ module.exports = {
       env: { NODE_ENV: "production", PORT: "3100" },
       autorestart: true,
       max_restarts: 10,
-      out_file: "./logs/out.log",
-      error_file: "./logs/err.log",
+      out_file: path.join(__dirname, "logs", "out.log"),
+      error_file: path.join(__dirname, "logs", "err.log"),
     },
   ],
 };
