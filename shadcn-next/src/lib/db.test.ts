@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { DEFAULT_BANNER_MESSAGES, Store } from "@/lib/db";
+import { DEFAULT_BANNER_MESSAGES, Store, StoreError } from "@/lib/db";
 import { PHONES } from "@/lib/phones";
 
 let dir: string;
@@ -36,4 +36,96 @@ describe("Store 읽기", () => {
     expect(b.getState().bannerMessages).toEqual(DEFAULT_BANNER_MESSAGES);
     b.close();
   });
+});
+
+const addUser = (name = "홍길동", org = "QA") => {
+  const state = store.addBorrower(name, org);
+  return state.borrowers[state.borrowers.length - 1].id;
+};
+
+describe("Store 쓰기", () => {
+  it("대여 → 이관 → 반납 흐름", () => {
+    const u1 = addUser("A");
+    const u2 = addUser("B");
+
+    let s = store.borrow("a01", u1);
+    expect(s.phones.a01.status).toBe("borrowed");
+    expect(s.phones.a01.currentLoan?.borrowerId).toBe(u1);
+
+    s = store.transfer("a01", u2);
+    expect(s.phones.a01.currentLoan?.borrowerId).toBe(u2);
+
+    s = store.returnPhone("a01");
+    expect(s.phones.a01.status).toBe("available");
+    expect(s.phones.a01.currentLoan).toBeUndefined();
+    expect(s.phones.a01.lastReturn?.borrowerId).toBe(u2);
+  });
+
+  it("이미 대여 중이면 두 번째 대여는 409이고 첫 대여자가 유지된다", () => {
+    const u1 = addUser("A");
+    const u2 = addUser("B");
+    store.borrow("a01", u1);
+    expect(() => store.borrow("a01", u2)).toThrowError(StoreError);
+    try {
+      store.borrow("a01", u2);
+    } catch (e) {
+      expect((e as StoreError).status).toBe(409);
+    }
+    expect(store.getState().phones.a01.currentLoan?.borrowerId).toBe(u1);
+  });
+
+  it("알 수 없는 기기는 404이고 행이 생기지 않는다", () => {
+    const u1 = addUser();
+    expect(() => store.borrow("zzz", u1)).toThrowError(/기기/);
+    expect(Object.keys(store.getState().phones)).not.toContain("zzz");
+  });
+
+  it("없는 대여자로 대여하면 404", () => {
+    try {
+      store.borrow("a01", "nope");
+      throw new Error("should throw");
+    } catch (e) {
+      expect((e as StoreError).status).toBe(404);
+    }
+  });
+
+  it("대여 중이 아닌 기기 이관·반납은 409", () => {
+    const u1 = addUser();
+    expect(() => store.transfer("a01", u1)).toThrowError(StoreError);
+    expect(() => store.returnPhone("a01")).toThrowError(StoreError);
+  });
+
+  it("같은 사람에게 이관은 409", () => {
+    const u1 = addUser();
+    store.borrow("a01", u1);
+    expect(() => store.transfer("a01", u1)).toThrowError(StoreError);
+  });
+
+  it("공백 이름 대여자 추가는 400이고 DB 변화 없음", () => {
+    expect(() => store.addBorrower("   ", "QA")).toThrowError(StoreError);
+    expect(store.getState().borrowers).toHaveLength(0);
+  });
+
+  it("대여 중인 대여자 삭제는 409, 아니면 삭제", () => {
+    const u1 = addUser();
+    store.borrow("a01", u1);
+    expect(() => store.deleteBorrower(u1)).toThrowError(/대여 중/);
+    store.returnPhone("a01");
+    const s = store.deleteBorrower(u1);
+    expect(s.borrowers).toHaveLength(0);
+    expect(s.phones.a01.lastReturn?.borrowerId).toBe(u1);
+  });
+
+  it("없는 대여자 삭제는 404", () => {
+    expect(() => store.deleteBorrower("nope")).toThrowError(StoreError);
+  });
+
+  it("배너 추가는 중복을 무시하고 빈 값은 400", () => {
+    const s1 = store.addBanner("새 문구");
+    expect(s1.bannerMessages).toContain("새 문구");
+    const s2 = store.addBanner("새 문구");
+    expect(s2.bannerMessages.filter((m) => m === "새 문구")).toHaveLength(1);
+    expect(() => store.addBanner("  ")).toThrowError(StoreError);
+  });
+
 });
