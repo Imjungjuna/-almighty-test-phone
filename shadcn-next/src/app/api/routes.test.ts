@@ -33,6 +33,20 @@ const json = (body: unknown) =>
     body: JSON.stringify(body),
   });
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
+const del = () => new Request("http://local/x", { method: "DELETE" });
+
+async function expectError(res: Response, status: number) {
+  expect(res.status).toBe(status);
+  const body = await res.json();
+  expect(typeof body.error).toBe("string");
+  expect(body.error.length).toBeGreaterThan(0);
+}
+
+async function newBorrower(name = "A") {
+  const res = await addBorrower(json({ name, organization: "QA" }));
+  const body = await res.json();
+  return body.borrowers[body.borrowers.length - 1].id as string;
+}
 
 describe("API 라우트", () => {
   it("GET /api/state", async () => {
@@ -59,8 +73,8 @@ describe("API 라우트", () => {
     res = await transfer(json({ borrowerId: u2 }), params("a01"));
     expect(res.status).toBe(200);
 
-    res = await deleteBorrower(new Request("http://local/x", { method: "DELETE" }), params(u2));
-    expect(res.status).toBe(409);
+    res = await deleteBorrower(del(), params(u2));
+    await expectError(res, 409);
 
     res = await returnPhone(json({}), params("a01"));
     expect(res.status).toBe(200);
@@ -72,26 +86,60 @@ describe("API 라우트", () => {
 
   it("알 수 없는 기기는 404", async () => {
     const res = await borrow(json({ borrowerId: "x" }), params("zzz"));
-    expect(res.status).toBe(404);
+    await expectError(res, 404);
   });
 
   it("본문이 JSON이 아니면 400", async () => {
     const res = await addBorrower(
       new Request("http://local/x", { method: "POST", body: "not json" })
     );
-    expect(res.status).toBe(400);
+    await expectError(res, 400);
   });
 
   it("borrowerId가 없으면 400", async () => {
     const res = await borrow(json({}), params("a01"));
-    expect(res.status).toBe(400);
+    await expectError(res, 400);
   });
 
   it("배너 추가와 빈 값", async () => {
     let res = await addBanner(json({ message: "hi" }));
     expect((await res.json()).bannerMessages).toContain("hi");
     res = await addBanner(json({ message: " " }));
-    expect(res.status).toBe(400);
+    await expectError(res, 400);
   });
 
+  it("중복 배너는 200이며 중복 추가되지 않는다", async () => {
+    await addBanner(json({ message: "hi" }));
+    const res = await addBanner(json({ message: "hi" }));
+    expect(res.status).toBe(200);
+    const msgs: string[] = (await res.json()).bannerMessages;
+    expect(msgs.filter((m) => m === "hi")).toHaveLength(1);
+  });
+
+  it("존재하지 않는 대여자로 대여/이관은 404", async () => {
+    await expectError(await borrow(json({ borrowerId: "nope" }), params("a01")), 404);
+    const u = await newBorrower();
+    await borrow(json({ borrowerId: u }), params("a01"));
+    await expectError(await transfer(json({ borrowerId: "nope" }), params("a01")), 404);
+  });
+
+  it("대여 중이 아닌 기기의 이관/반납은 409", async () => {
+    const u = await newBorrower();
+    await expectError(await transfer(json({ borrowerId: u }), params("a01")), 409);
+    await expectError(await returnPhone(json({}), params("a01")), 409);
+  });
+
+  it("알 수 없는 기기 반납은 404", async () => {
+    await expectError(await returnPhone(json({}), params("zzz")), 404);
+  });
+
+  it("알 수 없는 대여자 삭제는 404", async () => {
+    await expectError(await deleteBorrower(del(), params("nope")), 404);
+  });
+
+  it("대여자 이름 또는 소속이 비면 400", async () => {
+    await expectError(await addBorrower(json({ name: " ", organization: "QA" })), 400);
+    await expectError(await addBorrower(json({ name: "A", organization: "" })), 400);
+    await expectError(await addBorrower(json({})), 400);
+  });
 });
