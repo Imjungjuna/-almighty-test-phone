@@ -44,6 +44,12 @@ const addUser = (name = "홍길동", org = "QA") => {
 };
 
 describe("Store 쓰기", () => {
+  it("같은 시각에 추가된 대여자도 추가한 순서대로 돌려준다", () => {
+    const names = ["가", "나", "다", "라", "마", "바", "사", "아"];
+    for (const n of names) store.addBorrower(n, "QA");
+    expect(store.getState().borrowers.map((b) => b.name)).toEqual(names);
+  });
+
   it("대여 → 이관 → 반납 흐름", () => {
     const u1 = addUser("A");
     const u2 = addUser("B");

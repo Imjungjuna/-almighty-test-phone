@@ -104,7 +104,7 @@ export class Store {
 
   getState(): AppState {
     const borrowers = (
-      this.db.prepare("SELECT * FROM borrowers ORDER BY created_at, id").all() as BorrowerRow[]
+      this.db.prepare("SELECT * FROM borrowers ORDER BY created_at, rowid").all() as BorrowerRow[]
     ).map(rowToBorrower);
 
     const phones: PhoneStateMap = createDefaultPhoneStates();
