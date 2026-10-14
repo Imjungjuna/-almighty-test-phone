@@ -13,6 +13,8 @@ export const DEFAULT_BANNER_MESSAGES = [
   "롤링 배너 구매 문의",
 ];
 
+export const MAX_BANNERS = 5;
+
 export class StoreError extends Error {
   status: 400 | 404 | 409;
   constructor(status: 400 | 404 | 409, message: string) {
@@ -238,10 +240,18 @@ export class Store {
   addBanner(messageRaw: string): AppState {
     const message = replaceBannedWords(messageRaw.trim());
     if (!message) throw new StoreError(400, "배너 문구를 입력해 주세요.");
-    this.db
-      .prepare("INSERT OR IGNORE INTO banner_messages (message, created_at) VALUES (?, ?)")
-      .run(message, new Date().toISOString());
-    return this.getState();
+    return this.db.transaction(() => {
+      this.db
+        .prepare("INSERT OR IGNORE INTO banner_messages (message, created_at) VALUES (?, ?)")
+        .run(message, new Date().toISOString());
+      // 최신 MAX_BANNERS개만 남기고 오래된 배너부터 내린다.
+      this.db
+        .prepare(
+          "DELETE FROM banner_messages WHERE id NOT IN (SELECT id FROM banner_messages ORDER BY id DESC LIMIT ?)"
+        )
+        .run(MAX_BANNERS);
+      return this.getState();
+    })();
   }
 
   close() {

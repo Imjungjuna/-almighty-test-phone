@@ -132,6 +132,12 @@ describe("Store 쓰기", () => {
     expect(state.bannerMessages.some((m) => /담배|금연/.test(m))).toBe(false);
   });
 
+  it("배너는 최신 5개만 남는다", () => {
+    let state = store.getState();
+    for (let i = 1; i <= 7; i++) state = store.addBanner(`배너 ${i}`);
+    expect(state.bannerMessages).toEqual(["배너 3", "배너 4", "배너 5", "배너 6", "배너 7"]);
+  });
+
   it("배너 추가는 중복을 무시하고 빈 값은 400", () => {
     const s1 = store.addBanner("새 문구");
     expect(s1.bannerMessages).toContain("새 문구");
