@@ -49,6 +49,16 @@ async function newBorrower(name = "A") {
 }
 
 describe("API 라우트", () => {
+  it("같은 폰 동시 대여 요청은 하나만 성공", async () => {
+    const u1 = await newBorrower("A");
+    const u2 = await newBorrower("B");
+    const results = await Promise.all([
+      borrow(json({ borrowerId: u1 }), params("a01")),
+      borrow(json({ borrowerId: u2 }), params("a01")),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+  });
+
   it("GET /api/state", async () => {
     const res = await getState();
     expect(res.status).toBe(200);
