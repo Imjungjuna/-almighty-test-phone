@@ -15,7 +15,7 @@ type MotivationBannerProps = {
 export function MotivationBanner({
   messages,
   className,
-  delay = 1_000,
+  delay = 4_000,
 }: MotivationBannerProps) {
   const autoplay = React.useRef(
     Autoplay({
@@ -39,15 +39,25 @@ export function MotivationBanner({
     return null;
   }
 
-  const slides = messages.length === 1 ? [...messages, ...messages] : messages;
+  const boxClassName = cn(
+    "relative h-6 w-full max-w-full overflow-hidden rounded-md bg-primary/10 px-3 text-sm font-semibold text-primary sm:h-8 sm:w-[36rem]",
+    className
+  );
+
+  if (messages.length === 1) {
+    return (
+      <div className={cn(boxClassName, "flex items-center")}>
+        <span className="truncate">{messages[0]}</span>
+      </div>
+    );
+  }
+
+  const slides = messages;
 
   return (
     <div
       ref={emblaRef}
-      className={cn(
-        "relative h-6 w-full max-w-full overflow-hidden rounded-md bg-primary/10 px-3 text-sm font-semibold text-primary sm:h-8 sm:w-[36rem]",
-        className
-      )}
+      className={boxClassName}
     >
       <div className="flex h-full flex-col">
         {slides.map((message, index) => (

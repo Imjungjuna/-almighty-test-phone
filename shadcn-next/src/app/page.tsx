@@ -448,7 +448,12 @@ export default function Home() {
                 onClick={() =>
                   openPhoneDialog(phone.id, isBorrowed ? "manage" : "borrow")
                 }
-                className="group flex h-full flex-col rounded-xl border p-5 text-left shadow-sm transition hover:border-primary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className={cn(
+                  "group flex h-full flex-col rounded-xl border-2 p-5 text-left shadow-sm transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  isBorrowed
+                    ? "border-red-300 bg-red-50 hover:border-red-400"
+                    : "border-emerald-300 bg-emerald-50 hover:border-emerald-400"
+                )}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
@@ -528,8 +533,8 @@ export default function Home() {
                     className={cn(
                       "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold",
                       isBorrowed
-                        ? "border-destructive/40 bg-destructive/10 text-destructive"
-                        : "border-sky-200 bg-sky-100 text-sky-600"
+                        ? "border-red-300 bg-red-100 text-red-700"
+                        : "border-emerald-300 bg-emerald-100 text-emerald-700"
                     )}
                   >
                     {isBorrowed ? "대여 중" : "대여 가능"}
