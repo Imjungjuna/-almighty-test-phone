@@ -397,7 +397,8 @@ export default function Home() {
             전능아이티 테스트폰 이력관리
           </h1>
           <div className="w-full max-w-full rounded-md bg-amber-500/15 px-3 py-1 text-sm font-semibold text-amber-800 sm:w-[36rem] sm:py-1.5 dark:text-amber-300">
-            테스트폰 비밀번호 · 네자리 0727 · 여섯자리 000000 · 패턴 2489
+            <p>테스트폰 비밀번호 · 네자리 0727 · 여섯자리 000000 · 패턴 2489</p>
+            <p>오른쪽에 있는 종이는 쓰지 않으셔도 됩니다. 구시대의 유물입니다.</p>
           </div>
           <MotivationBanner messages={bannerMessages} />
           <Button
