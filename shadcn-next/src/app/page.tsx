@@ -50,6 +50,7 @@ const GRID_LAYOUT: GridItem[] = [
   { type: "phone", phoneId: "i03" },
   { type: "phone", phoneId: "a04" },
   { type: "borrower-card" },
+  { type: "phone", phoneId: "a05" },
 ];
 
 type BorrowerOrgOption = "프론트엔드팀" | "백엔드팀" | "QA" | "기타";
@@ -423,7 +424,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:grid-rows-4 sm:gap-6">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:grid-rows-5 sm:gap-6">
         {GRID_LAYOUT.map((item) => {
           if (item.type === "phone") {
             const phone = PHONE_BY_ID[item.phoneId];

@@ -36,6 +36,15 @@ export const PHONES = [
     imageSize: { width: 593, height: 589, displayHeight: 176 },
   },
   {
+    id: "a05",
+    label: "A05",
+    platform: "android",
+    model: "갤럭시 S23",
+    color: "크림",
+    image: "/devices/a05-s23.png",
+    imageSize: { width: 360, height: 360, displayHeight: 176 },
+  },
+  {
     id: "i01",
     label: "I01",
     platform: "ios",
