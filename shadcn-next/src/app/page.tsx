@@ -6,6 +6,7 @@ import { Check, Lock, Search } from "lucide-react";
 import { LoanRow } from "@/components/loan-row";
 import { MotivationBanner } from "@/components/motivation-banner";
 import { DeviceImage, DeviceSpec, PhoneTile } from "@/components/phone-tile";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -586,6 +587,7 @@ export default function Home() {
                 </button>
               ))}
             </div>
+            <ThemeToggle />
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
