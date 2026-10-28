@@ -6,7 +6,7 @@ import type { PhoneDefinition } from "@/lib/phones";
 /** The device code written on the physical phone (A01, I02 ...). */
 export function DeviceLabel({ label }: { label: string }) {
   return (
-    <span className="inline-flex shrink-0 items-center rounded border px-1.5 font-mono text-[0.72rem] font-semibold leading-5 text-muted-foreground">
+    <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
       {label}
     </span>
   );
@@ -16,6 +16,7 @@ export function DeviceSpec({ phone }: { phone: PhoneDefinition }) {
   return (
     <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
       <DeviceLabel label={phone.label} />
+      <span aria-hidden>·</span>
       {phone.osVersion ? (
         <span className="font-mono font-semibold text-foreground">
           {phone.osVersion}
