@@ -3,10 +3,10 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import type { PhoneDefinition } from "@/lib/phones";
 
-/** Yellow sticker matching the physical label on the phone. */
+/** The device code written on the physical phone (A01, I02 ...). */
 export function DeviceLabel({ label }: { label: string }) {
   return (
-    <span className="inline-flex shrink-0 items-center rounded-[3px] bg-label px-1.5 font-mono text-[0.72rem] font-semibold leading-5 text-label-foreground">
+    <span className="inline-flex shrink-0 items-center rounded border px-1.5 font-mono text-[0.72rem] font-semibold leading-5 text-muted-foreground">
       {label}
     </span>
   );

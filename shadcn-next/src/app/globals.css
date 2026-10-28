@@ -31,8 +31,6 @@
   --status-ok: 160 80% 26%;
   --status-busy: 9 72% 41%;
   --well: 220 12% 95%;
-  --label: 48 97% 64%;
-  --label-foreground: 48 100% 9%;
 }
 
 .dark {
@@ -63,8 +61,6 @@
   --status-ok: 157 58% 56%;
   --status-busy: 9 100% 73%;
   --well: 220 10% 82%;
-  --label: 48 88% 60%;
-  --label-foreground: 48 100% 8%;
 }
 
 @layer base {

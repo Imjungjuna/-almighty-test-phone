@@ -56,10 +56,6 @@ const config: Config = {
           busy: "hsl(var(--status-busy))",
         },
         well: "hsl(var(--well))",
-        label: {
-          DEFAULT: "hsl(var(--label))",
-          foreground: "hsl(var(--label-foreground))",
-        },
         chart: {
           1: "hsl(var(--chart-1))",
           2: "hsl(var(--chart-2))",
