@@ -51,6 +51,15 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        status: {
+          ok: "hsl(var(--status-ok))",
+          busy: "hsl(var(--status-busy))",
+        },
+        well: "hsl(var(--well))",
+        label: {
+          DEFAULT: "hsl(var(--label))",
+          foreground: "hsl(var(--label-foreground))",
+        },
         chart: {
           1: "hsl(var(--chart-1))",
           2: "hsl(var(--chart-2))",
@@ -73,8 +82,13 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        flash: {
+          from: { boxShadow: "0 0 0 3px hsl(var(--ring))" },
+          to: { boxShadow: "0 0 0 0 transparent" },
+        },
       },
       animation: {
+        flash: "flash 1.4s ease-out",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
