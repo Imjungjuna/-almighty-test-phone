@@ -6,7 +6,9 @@ export const PHONES = [
     model: "갤럭시 S8",
     color: "미드나이트 블랙",
     image: "/devices/a01-s8.avif",
-    imageSize: { width: 360, height: 360, displayHeight: 176 },
+    // 기기 설정 > 휴대전화 정보에서 확인한 버전으로 채운다 (예: "Android 12", "iOS 16.7")
+    osVersion: null as string | null,
+    imageSize: { width: 360, height: 360 },
   },
   {
     id: "a02",
@@ -15,7 +17,8 @@ export const PHONES = [
     model: "갤럭시 S9",
     color: "선라이즈 골드",
     image: "/devices/a02-s9.jpg",
-    imageSize: { width: 849, height: 560, displayHeight: 150 },
+    osVersion: null as string | null,
+    imageSize: { width: 849, height: 560 },
   },
   {
     id: "a03",
@@ -24,7 +27,8 @@ export const PHONES = [
     model: "갤럭시 S10 5G",
     color: "크라운 골드",
     image: "/devices/a3-s10.jpeg",
-    imageSize: { width: 275, height: 183, displayHeight: 140 },
+    osVersion: null as string | null,
+    imageSize: { width: 275, height: 183 },
   },
   {
     id: "a04",
@@ -33,7 +37,8 @@ export const PHONES = [
     model: "LG V50 ThinQ",
     color: "아스트로 블랙",
     image: "/devices/a04-v50.webp",
-    imageSize: { width: 593, height: 589, displayHeight: 176 },
+    osVersion: null as string | null,
+    imageSize: { width: 593, height: 589 },
   },
   {
     id: "a05",
@@ -42,7 +47,8 @@ export const PHONES = [
     model: "갤럭시 S23",
     color: "크림",
     image: "/devices/a05-s23.png",
-    imageSize: { width: 360, height: 360, displayHeight: 176 },
+    osVersion: null as string | null,
+    imageSize: { width: 360, height: 360 },
   },
   {
     id: "i01",
@@ -51,7 +57,8 @@ export const PHONES = [
     model: "아이폰 SE",
     color: "PRODUCT(RED)",
     image: "/devices/i01_se1.jpeg",
-    imageSize: { width: 400, height: 400, displayHeight: 176 },
+    osVersion: null as string | null,
+    imageSize: { width: 400, height: 400 },
   },
   {
     id: "i02",
@@ -60,7 +67,8 @@ export const PHONES = [
     model: "아이폰 X",
     color: "스페이스 그레이",
     image: "/devices/i02-X.webp",
-    imageSize: { width: 360, height: 360, displayHeight: 176 },
+    osVersion: null as string | null,
+    imageSize: { width: 360, height: 360 },
   },
   {
     id: "i03",
@@ -69,7 +77,8 @@ export const PHONES = [
     model: "아이폰 12 mini",
     color: "블랙",
     image: "/devices/i03-12mini.avif",
-    imageSize: { width: 600, height: 600, displayHeight: 176 },
+    osVersion: null as string | null,
+    imageSize: { width: 600, height: 600 },
   },
 ] as const;
 

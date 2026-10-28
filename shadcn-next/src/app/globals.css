@@ -75,6 +75,7 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    word-break: keep-all;
     font-family: var(--font-geist-sans), system-ui, -apple-system,
       BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
