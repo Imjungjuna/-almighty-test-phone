@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { PHONES, PHONE_BY_ID, type PhoneId, type Platform } from "@/lib/phones";
 import { api, ApiError, isOfflineError } from "@/lib/api";
+import { readMeId, writeMeId } from "@/lib/me";
 import type { AppState, Borrower, PhoneStateMap } from "@/lib/types";
 import {
   LONG_LOAN_DAYS,
@@ -111,6 +112,8 @@ export default function Home() {
     string | null
   >(null);
   const [borrowerQuery, setBorrowerQuery] = React.useState("");
+  const [meId, setMeId] = React.useState<string | null>(null);
+  const [rememberChoice, setRememberChoice] = React.useState(false);
 
   const [borrowerDialogOpen, setBorrowerDialogOpen] = React.useState(false);
   const [borrowerName, setBorrowerName] = React.useState("");
@@ -226,14 +229,20 @@ export default function Home() {
       setSelectedPhoneId(phoneId);
       setPhoneDialogMode(mode);
       setBorrowerQuery("");
+      setRememberChoice(false);
       setReturnConfirmPhoneId(null);
       // Default selection is computed once on open; polling must not reset it.
       setSelectedBorrowerId(
-        defaultBorrowerId(mode, ensurePhoneState(phones, phoneId), borrowers)
+        defaultBorrowerId(
+          mode,
+          ensurePhoneState(phones, phoneId),
+          borrowers,
+          meId
+        )
       );
       setPhoneDialogOpen(true);
     },
-    [borrowers, phones]
+    [borrowers, phones, meId]
   );
 
   const closePhoneDialog = React.useCallback(() => {
@@ -241,6 +250,10 @@ export default function Home() {
     setPhoneDialogMode(null);
     setSelectedPhoneId(null);
     setSelectedBorrowerId(null);
+  }, []);
+
+  React.useEffect(() => {
+    setMeId(readMeId());
   }, []);
 
   React.useEffect(() => {
@@ -299,7 +312,8 @@ export default function Home() {
           selectedBorrowerId,
           phoneDialogMode,
           ensurePhoneState(phones, selectedPhoneId),
-          borrowers
+          borrowers,
+          meId
         )
       : null;
 
@@ -308,6 +322,10 @@ export default function Home() {
     const phoneId = selectedPhoneId;
     const borrowerId = effectiveSelectedBorrowerId;
     const borrower = borrowers.find((b) => b.id === borrowerId);
+    if (rememberChoice) {
+      writeMeId(borrowerId);
+      setMeId(borrowerId);
+    }
     closePhoneDialog();
     await runAction(
       () => api.borrow(phoneId, borrowerId),
@@ -438,6 +456,14 @@ export default function Home() {
     : null;
   const dialogPhone = selectedPhoneId ? PHONE_BY_ID[selectedPhoneId] : null;
   const selectedBorrower = getBorrower(effectiveSelectedBorrowerId);
+  // A remembered borrower that was deleted simply stops counting as "me".
+  const me = getBorrower(meId);
+
+  const forgetMe = () => {
+    writeMeId(null);
+    setMeId(null);
+    showToast("이 브라우저의 기본 대여자를 해제했습니다.");
+  };
 
   const visiblePhones = PHONES.filter(
     (phone) => platformFilter === "all" || phone.platform === platformFilter
@@ -525,6 +551,17 @@ export default function Home() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {me && (
+              <button
+                type="button"
+                onClick={forgetMe}
+                className="inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs transition hover:bg-accent"
+                aria-label={`기본 대여자 ${me.name} 해제`}
+              >
+                <span className="font-semibold">나: {me.name}</span>
+                <span className="text-muted-foreground">해제</span>
+              </button>
+            )}
             {offline && (
               <span className="rounded-full bg-destructive px-3 py-1 text-xs font-semibold text-destructive-foreground">
                 서버 연결 끊김
@@ -614,7 +651,7 @@ export default function Home() {
                   key={phone.id}
                   phone={phone}
                   lastReturn={lastReturn}
-                  actionLabel="빌리기"
+                  actionLabel={me ? `${me.name} 님으로 빌리기` : "빌리기"}
                   disabled={offline}
                   flash={flashPhoneId === phone.id}
                   onBorrow={() => openPhoneDialog(phone.id, "borrow")}
@@ -792,6 +829,25 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          {phoneDialogMode === "borrow" &&
+            selectedBorrower &&
+            selectedBorrower.id !== me?.id && (
+              <label
+                htmlFor="remember-me"
+                className="flex items-center gap-2 text-sm text-muted-foreground"
+              >
+                <input
+                  id="remember-me"
+                  type="checkbox"
+                  checked={rememberChoice}
+                  onChange={(event) => setRememberChoice(event.target.checked)}
+                  className="size-4 accent-foreground"
+                />
+                이 브라우저에서는 {selectedBorrower.name} 님을 기본으로 선택
+                (공용 태블릿에서는 켜지 마세요)
+              </label>
+            )}
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={closePhoneDialog}>
