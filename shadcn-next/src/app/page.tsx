@@ -746,7 +746,7 @@ export default function Home() {
               {dialogPhone && (
                 <DeviceImage
                   phone={dialogPhone}
-                  className="h-14 w-11 shrink-0 rounded-md p-1"
+                  className="h-24 w-20 shrink-0 rounded-md p-1.5"
                 />
               )}
               <div className="flex flex-col gap-1 text-left">

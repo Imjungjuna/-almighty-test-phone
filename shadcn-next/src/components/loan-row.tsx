@@ -41,7 +41,7 @@ export function LoanRow({
         flash && "motion-safe:animate-flash"
       )}
     >
-      <DeviceImage phone={phone} className="h-12 w-9 shrink-0 rounded-md p-1" />
+      <DeviceImage phone={phone} className="h-16 w-12 shrink-0 rounded-md p-1" />
       <div className="flex min-w-[8.5rem] flex-col gap-0.5">
         <span className="text-sm font-semibold leading-tight">{phone.model}</span>
         <DeviceSpec phone={phone} />
@@ -77,8 +77,8 @@ export function LoanRow({
         ) : (
           <>
             <Button
-              variant="ghost"
-              className="h-10 text-muted-foreground"
+              variant="secondary"
+              className="h-10"
               onClick={onTransfer}
               disabled={disabled}
               aria-label={`${phone.model} 대여자 변경`}

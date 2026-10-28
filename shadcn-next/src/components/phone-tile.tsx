@@ -81,7 +81,7 @@ export function PhoneTile({
         flash && "motion-safe:animate-flash"
       )}
     >
-      <DeviceImage phone={phone} className="h-28 p-3 sm:h-32" />
+      <DeviceImage phone={phone} className="h-44 p-2 sm:h-52" />
       <span className="flex flex-1 flex-col gap-1 p-3">
         <span className="text-base font-bold leading-tight tracking-tight">
           {phone.model}
